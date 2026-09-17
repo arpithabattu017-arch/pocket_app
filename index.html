@@ -1,0 +1,615 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>PocketPlan</title>
+
+<style>
+body {
+    font-family: system-ui;
+    margin: 0;
+    background: #f5f7fb;
+    color: #151923;
+}
+
+.wrap {
+    max-width: 980px;
+    margin: auto;
+    padding: 24px;
+}
+
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 12px;
+}
+
+.card {
+    background: white;
+    border: 1px solid #e7eaf0;
+    border-radius: 16px;
+    padding: 18px;
+}
+
+.cats {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 12px;
+}
+
+.bar {
+    height: 7px;
+    background: #eef0f4;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.bar i {
+    display: block;
+    height: 100%;
+    background: #635bff;
+}
+
+button {
+    background: #635bff;
+    color: #fff;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+input,
+select {
+    padding: 9px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 15px 0;
+}
+
+.txn {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid #eee;
+    padding: 12px 0;
+}
+
+.muted {
+    color: #6f7787;
+    font-size: 13px;
+}
+
+@media(max-width:700px) {
+    .grid,
+    .cats {
+        grid-template-columns: 1fr;
+    }
+
+    .top {
+        align-items: flex-start;
+        gap: 10px;
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+    <div class="top">
+        <div>
+            <h1>PocketPlan</h1>
+            <div class="muted">
+                Category budgeting that stays simple.
+            </div>
+        </div>
+
+        <input type="month" id="month">
+    </div>
+
+    <div class="grid" id="summary"></div>
+
+    <h2>Categories</h2>
+
+    <div class="row">
+        <input id="cname" placeholder="Category">
+        <input id="cbudget" type="number" placeholder="Budget">
+
+        <button onclick="addCategory()">
+            Add category
+        </button>
+    </div>
+
+    <div class="cats" id="cats"></div>
+
+    <h2>Add expense</h2>
+
+    <div class="row">
+
+        <select id="ecat"></select>
+
+        <input
+            id="eamt"
+            type="number"
+            placeholder="Amount"
+        >
+
+        <input
+            id="enote"
+            placeholder="Note"
+        >
+
+        <input
+            id="edate"
+            type="date"
+        >
+
+        <button onclick="addExpense()">
+            Save expense
+        </button>
+
+    </div>
+
+    <div class="card">
+        <h3>Transactions</h3>
+        <div id="txns"></div>
+    </div>
+
+</div>
+
+
+<script>
+
+const CK = 'pp_categories';
+const TK = 'pp_txns';
+
+let cats =
+    JSON.parse(localStorage.getItem(CK) || '[]');
+
+let txns =
+    JSON.parse(localStorage.getItem(TK) || '[]');
+
+
+const month =
+    document.getElementById('month');
+
+const edate =
+    document.getElementById('edate');
+
+
+month.value =
+    new Date().toISOString().slice(0,7);
+
+edate.value =
+    new Date().toISOString().slice(0,10);
+
+
+month.onchange = render;
+
+
+const fmt = n =>
+    '₹' +
+    Number(n).toLocaleString(
+        'en-IN',
+        {maximumFractionDigits:0}
+    );
+
+
+function save() {
+
+    localStorage.setItem(
+        CK,
+        JSON.stringify(cats)
+    );
+
+    localStorage.setItem(
+        TK,
+        JSON.stringify(txns)
+    );
+
+    render();
+}
+
+
+function addCategory() {
+
+    let n =
+        cname.value.trim();
+
+    let b =
+        +cbudget.value;
+
+    if (!n || !b)
+        return;
+
+    cats.push({
+
+        id: crypto.randomUUID(),
+
+        name: n,
+
+        budget: b,
+
+        month: month.value
+    });
+
+
+    cname.value = '';
+
+    cbudget.value = '';
+
+    save();
+}
+
+
+function addExpense() {
+
+    let id =
+        ecat.value;
+
+    let a =
+        +eamt.value;
+
+
+    if (!id || !a)
+        return;
+
+
+    txns.unshift({
+
+        id: crypto.randomUUID(),
+
+        categoryId: id,
+
+        amount: a,
+
+        note:
+            enote.value.trim(),
+
+        date:
+            edate.value
+    });
+
+
+    eamt.value = '';
+
+    enote.value = '';
+
+    save();
+}
+
+
+function delCat(id) {
+
+    cats =
+        cats.filter(
+            c => c.id !== id
+        );
+
+    save();
+}
+
+
+function delTxn(id) {
+
+    txns =
+        txns.filter(
+            t => t.id !== id
+        );
+
+    save();
+}
+
+
+function render() {
+
+    let mc =
+        cats.filter(
+            c => c.month === month.value
+        );
+
+
+    let mt =
+        txns.filter(
+            t => t.date.startsWith(month.value)
+        );
+
+
+    let spent = {};
+
+
+    mt.forEach(t =>
+
+        spent[t.categoryId] =
+            (spent[t.categoryId] || 0)
+            + t.amount
+    );
+
+
+    let b =
+        mc.reduce(
+            (s,c) => s + c.budget,
+            0
+        );
+
+
+    let s =
+        mt.reduce(
+            (x,t) => x + t.amount,
+            0
+        );
+
+
+    summary.innerHTML = `
+
+        <div class="card">
+
+            <div class="muted">
+                Budget
+            </div>
+
+            <h2>
+                ${fmt(b)}
+            </h2>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="muted">
+                Spent
+            </div>
+
+            <h2>
+                ${fmt(s)}
+            </h2>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="muted">
+                Remaining
+            </div>
+
+            <h2>
+                ${fmt(b-s)}
+            </h2>
+
+        </div>
+
+    `;
+
+
+    const catsEl =
+        document.getElementById('cats');
+
+
+    catsEl.innerHTML =
+        mc.map(c => {
+
+            let sp =
+                spent[c.id] || 0;
+
+
+            let p =
+                Math.min(
+                    100,
+                    c.budget
+                        ? sp/c.budget*100
+                        : 0
+                );
+
+
+            return `
+
+            <div class="card">
+
+                <button
+                    style="
+                    float:right;
+                    background:#eee;
+                    color:#555"
+                    onclick="delCat('${c.id}')"
+                >
+                    ×
+                </button>
+
+
+                <h3>
+                    ${c.name}
+                </h3>
+
+
+                <h2>
+                    ${fmt(c.budget-sp)}
+                </h2>
+
+
+                <div class="muted">
+
+                    remaining of
+                    ${fmt(c.budget)}
+
+                </div>
+
+
+                <div class="bar">
+
+                    <i
+                        style="width:${p}%">
+                    </i>
+
+                </div>
+
+
+                <div class="muted">
+
+                    Spent
+                    ${fmt(sp)}
+
+                </div>
+
+            </div>
+
+            `;
+
+        }).join('')
+
+        ||
+
+        `<div class="card muted">
+            No categories yet.
+        </div>`;
+
+
+    ecat.innerHTML =
+        mc.map(c =>
+
+            `<option value="${c.id}">
+                ${c.name}
+            </option>`
+
+        ).join('');
+
+
+    document.getElementById('txns')
+        .innerHTML =
+
+        mt.map(t => {
+
+            let c =
+                cats.find(
+                    x =>
+                    x.id === t.categoryId
+                );
+
+
+            return `
+
+            <div class="txn">
+
+                <div>
+
+                    <b>
+                        ${
+                            t.note
+                            ||
+                            c?.name
+                            ||
+                            'Expense'
+                        }
+                    </b>
+
+
+                    <div class="muted">
+
+                        ${
+                            c?.name
+                            ||
+                            'Deleted category'
+                        }
+
+                        ·
+
+                        ${t.date}
+
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <b>
+                        -${fmt(t.amount)}
+                    </b>
+
+
+                    <button
+                        style="
+                        background:#eee;
+                        color:#555;
+                        padding:5px 8px"
+                        onclick="delTxn('${t.id}')"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+            </div>
+
+            `;
+
+        }).join('')
+
+        ||
+
+        `<div class="muted">
+            No transactions yet.
+        </div>`;
+}
+
+
+/* Add default categories
+   when opening app for first time */
+
+if (!cats.length) {
+
+    cats = [
+
+        {
+            id: crypto.randomUUID(),
+            name: 'Grocery',
+            budget: 10000,
+            month: month.value
+        },
+
+        {
+            id: crypto.randomUUID(),
+            name: 'Transport',
+            budget: 5000,
+            month: month.value
+        },
+
+        {
+            id: crypto.randomUUID(),
+            name: 'Shopping',
+            budget: 6000,
+            month: month.value
+        }
+
+    ];
+
+    save();
+
+} else {
+
+    render();
+
+}
+
+</script>
+
+</body>
+</html>
