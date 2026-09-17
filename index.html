@@ -50,6 +50,7 @@ body {
     background: #eef0f4;
     border-radius: 99px;
     overflow: hidden;
+    margin: 10px 0;
 }
 
 .bar i {
@@ -60,7 +61,7 @@ body {
 
 button {
     background: #635bff;
-    color: #fff;
+    color: white;
     border: 0;
     border-radius: 10px;
     padding: 10px 14px;
@@ -68,9 +69,18 @@ button {
     cursor: pointer;
 }
 
+button.secondary {
+    background: #eef0f4;
+    color: #333;
+}
+
+button.success {
+    background: #1e8e5a;
+}
+
 input,
 select {
-    padding: 9px;
+    padding: 10px;
     border: 1px solid #ddd;
     border-radius: 8px;
 }
@@ -82,11 +92,25 @@ select {
     margin: 15px 0;
 }
 
-.txn {
+.txn,
+.shop-item {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 12px;
     border-top: 1px solid #eee;
     padding: 12px 0;
+}
+
+.shop-left {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.shop-item.done .shop-name {
+    text-decoration: line-through;
+    color: #888;
 }
 
 .muted {
@@ -94,7 +118,12 @@ select {
     font-size: 13px;
 }
 
+.section {
+    margin-top: 32px;
+}
+
 @media(max-width:700px) {
+
     .grid,
     .cats {
         grid-template-columns: 1fr;
@@ -104,6 +133,18 @@ select {
         align-items: flex-start;
         gap: 10px;
         flex-direction: column;
+    }
+
+    .txn,
+    .shop-item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    input,
+    select {
+        width: 100%;
+        box-sizing: border-box;
     }
 }
 </style>
@@ -116,60 +157,136 @@ select {
     <div class="top">
         <div>
             <h1>PocketPlan</h1>
+
             <div class="muted">
-                Category budgeting that stays simple.
+                Budget, spend and plan your shopping.
             </div>
         </div>
 
         <input type="month" id="month">
     </div>
 
+
     <div class="grid" id="summary"></div>
 
-    <h2>Categories</h2>
 
-    <div class="row">
-        <input id="cname" placeholder="Category">
-        <input id="cbudget" type="number" placeholder="Budget">
+    <!-- CATEGORIES -->
 
-        <button onclick="addCategory()">
-            Add category
-        </button>
-    </div>
+    <div class="section">
 
-    <div class="cats" id="cats"></div>
+        <h2>Categories</h2>
 
-    <h2>Add expense</h2>
+        <div class="row">
 
-    <div class="row">
+            <input
+                id="cname"
+                placeholder="Category"
+            >
 
-        <select id="ecat"></select>
+            <input
+                id="cbudget"
+                type="number"
+                placeholder="Budget"
+            >
 
-        <input
-            id="eamt"
-            type="number"
-            placeholder="Amount"
-        >
+            <button onclick="addCategory()">
+                Add category
+            </button>
 
-        <input
-            id="enote"
-            placeholder="Note"
-        >
+        </div>
 
-        <input
-            id="edate"
-            type="date"
-        >
-
-        <button onclick="addExpense()">
-            Save expense
-        </button>
+        <div class="cats" id="cats"></div>
 
     </div>
 
-    <div class="card">
-        <h3>Transactions</h3>
-        <div id="txns"></div>
+
+    <!-- ADD EXPENSE -->
+
+    <div class="section">
+
+        <h2>Add Expense</h2>
+
+        <div class="row">
+
+            <select id="ecat"></select>
+
+            <input
+                id="eamt"
+                type="number"
+                placeholder="Amount"
+            >
+
+            <input
+                id="enote"
+                placeholder="Note"
+            >
+
+            <input
+                id="edate"
+                type="date"
+            >
+
+            <button onclick="addExpense()">
+                Save expense
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- SHOPPING LIST -->
+
+    <div class="section">
+
+        <h2>Shopping List</h2>
+
+        <div class="row">
+
+            <input
+                id="sname"
+                placeholder="Shopping item"
+            >
+
+            <input
+                id="sprice"
+                type="number"
+                placeholder="Expected price"
+            >
+
+            <button onclick="addShoppingItem()">
+                Add item
+            </button>
+
+        </div>
+
+
+        <div class="card">
+
+            <div
+                id="shoppingSummary"
+                class="muted">
+            </div>
+
+            <div id="shoppingList"></div>
+
+        </div>
+
+    </div>
+
+
+    <!-- TRANSACTIONS -->
+
+    <div class="section">
+
+        <div class="card">
+
+            <h3>Transactions</h3>
+
+            <div id="txns"></div>
+
+        </div>
+
     </div>
 
 </div>
@@ -179,26 +296,45 @@ select {
 
 const CK = 'pp_categories';
 const TK = 'pp_txns';
+const SK = 'pp_shopping';
+
 
 let cats =
-    JSON.parse(localStorage.getItem(CK) || '[]');
+    JSON.parse(
+        localStorage.getItem(CK) || '[]'
+    );
+
 
 let txns =
-    JSON.parse(localStorage.getItem(TK) || '[]');
+    JSON.parse(
+        localStorage.getItem(TK) || '[]'
+    );
+
+
+let shopping =
+    JSON.parse(
+        localStorage.getItem(SK) || '[]'
+    );
 
 
 const month =
     document.getElementById('month');
+
 
 const edate =
     document.getElementById('edate');
 
 
 month.value =
-    new Date().toISOString().slice(0,7);
+    new Date()
+        .toISOString()
+        .slice(0,7);
+
 
 edate.value =
-    new Date().toISOString().slice(0,10);
+    new Date()
+        .toISOString()
+        .slice(0,10);
 
 
 month.onchange = render;
@@ -206,10 +342,13 @@ month.onchange = render;
 
 const fmt = n =>
     '₹' +
-    Number(n).toLocaleString(
-        'en-IN',
-        {maximumFractionDigits:0}
-    );
+    Number(n || 0)
+        .toLocaleString(
+            'en-IN',
+            {
+                maximumFractionDigits: 0
+            }
+        );
 
 
 function save() {
@@ -219,145 +358,476 @@ function save() {
         JSON.stringify(cats)
     );
 
+
     localStorage.setItem(
         TK,
         JSON.stringify(txns)
     );
 
+
+    localStorage.setItem(
+        SK,
+        JSON.stringify(shopping)
+    );
+
+
     render();
 }
 
 
+/* ==========================
+   CATEGORY
+========================== */
+
 function addCategory() {
 
-    let n =
-        cname.value.trim();
+    let name =
+        document
+            .getElementById('cname')
+            .value
+            .trim();
 
-    let b =
-        +cbudget.value;
 
-    if (!n || !b)
+    let budget =
+        Number(
+            document
+                .getElementById('cbudget')
+                .value
+        );
+
+
+    if (!name || budget <= 0) {
         return;
+    }
+
 
     cats.push({
 
         id: crypto.randomUUID(),
 
-        name: n,
+        name: name,
 
-        budget: b,
+        budget: budget,
 
         month: month.value
+
     });
 
 
-    cname.value = '';
+    document.getElementById('cname').value = '';
 
-    cbudget.value = '';
+    document.getElementById('cbudget').value = '';
+
 
     save();
 }
 
 
-function addExpense() {
-
-    let id =
-        ecat.value;
-
-    let a =
-        +eamt.value;
-
-
-    if (!id || !a)
-        return;
-
-
-    txns.unshift({
-
-        id: crypto.randomUUID(),
-
-        categoryId: id,
-
-        amount: a,
-
-        note:
-            enote.value.trim(),
-
-        date:
-            edate.value
-    });
-
-
-    eamt.value = '';
-
-    enote.value = '';
-
-    save();
-}
-
-
-function delCat(id) {
+function deleteCategory(id) {
 
     cats =
         cats.filter(
             c => c.id !== id
         );
 
+
     save();
 }
 
 
-function delTxn(id) {
+/* ==========================
+   EXPENSES
+========================== */
+
+function addExpense() {
+
+    let categoryId =
+        document
+            .getElementById('ecat')
+            .value;
+
+
+    let amount =
+        Number(
+            document
+                .getElementById('eamt')
+                .value
+        );
+
+
+    let note =
+        document
+            .getElementById('enote')
+            .value
+            .trim();
+
+
+    let date =
+        document
+            .getElementById('edate')
+            .value;
+
+
+    if (!categoryId || amount <= 0) {
+        return;
+    }
+
+
+    txns.unshift({
+
+        id: crypto.randomUUID(),
+
+        categoryId: categoryId,
+
+        amount: amount,
+
+        note: note,
+
+        date: date
+
+    });
+
+
+    document.getElementById('eamt').value = '';
+
+    document.getElementById('enote').value = '';
+
+
+    save();
+}
+
+
+function deleteTransaction(id) {
 
     txns =
         txns.filter(
             t => t.id !== id
         );
 
+
     save();
 }
 
 
-function render() {
+/* ==========================
+   SHOPPING LIST
+========================== */
 
-    let mc =
-        cats.filter(
-            c => c.month === month.value
+function addShoppingItem() {
+
+    let name =
+        document
+            .getElementById('sname')
+            .value
+            .trim();
+
+
+    let price =
+        Number(
+            document
+                .getElementById('sprice')
+                .value
+        ) || 0;
+
+
+    if (!name) {
+        return;
+    }
+
+
+    shopping.push({
+
+        id: crypto.randomUUID(),
+
+        name: name,
+
+        price: price,
+
+        purchased: false,
+
+        addedToExpense: false,
+
+        month: month.value
+
+    });
+
+
+    document.getElementById('sname').value = '';
+
+    document.getElementById('sprice').value = '';
+
+
+    save();
+}
+
+
+function editShoppingItem(id) {
+
+    let item =
+        shopping.find(
+            x => x.id === id
         );
 
 
-    let mt =
+    if (!item || item.addedToExpense) {
+        return;
+    }
+
+
+    let newName =
+        prompt(
+            'Item name:',
+            item.name
+        );
+
+
+    if (newName === null) {
+        return;
+    }
+
+
+    newName =
+        newName.trim();
+
+
+    if (!newName) {
+        return;
+    }
+
+
+    let newPrice =
+        prompt(
+            'Expected price:',
+            item.price || 0
+        );
+
+
+    if (newPrice === null) {
+        return;
+    }
+
+
+    newPrice =
+        Number(newPrice);
+
+
+    if (
+        !Number.isFinite(newPrice)
+        ||
+        newPrice < 0
+    ) {
+
+        alert(
+            'Please enter a valid price.'
+        );
+
+        return;
+    }
+
+
+    item.name = newName;
+
+    item.price = newPrice;
+
+
+    save();
+}
+
+
+function toggleShoppingItem(id) {
+
+    let item =
+        shopping.find(
+            x => x.id === id
+        );
+
+
+    if (!item) {
+        return;
+    }
+
+
+    item.purchased =
+        !item.purchased;
+
+
+    save();
+}
+
+
+function deleteShoppingItem(id) {
+
+    shopping =
+        shopping.filter(
+            x => x.id !== id
+        );
+
+
+    save();
+}
+
+
+function addShoppingToExpense(id) {
+
+    let item =
+        shopping.find(
+            x => x.id === id
+        );
+
+
+    if (
+        !item
+        ||
+        !item.price
+        ||
+        item.addedToExpense
+    ) {
+
+        return;
+
+    }
+
+
+    let shoppingCategory =
+        cats.find(
+
+            c =>
+                c.month === month.value
+                &&
+                c.name
+                    .toLowerCase()
+                    === 'shopping'
+
+        );
+
+
+    /*
+       If Shopping category doesn't exist,
+       automatically create it.
+    */
+
+    if (!shoppingCategory) {
+
+        shoppingCategory = {
+
+            id: crypto.randomUUID(),
+
+            name: 'Shopping',
+
+            budget: 0,
+
+            month: month.value
+
+        };
+
+
+        cats.push(
+            shoppingCategory
+        );
+
+    }
+
+
+    txns.unshift({
+
+        id: crypto.randomUUID(),
+
+        categoryId:
+            shoppingCategory.id,
+
+        amount:
+            item.price,
+
+        note:
+            item.name,
+
+        date:
+            new Date()
+                .toISOString()
+                .slice(0,10)
+
+    });
+
+
+    item.purchased = true;
+
+    item.addedToExpense = true;
+
+
+    save();
+}
+
+
+/* ==========================
+   RENDER MAIN DASHBOARD
+========================== */
+
+function render() {
+
+    let monthlyCategories =
+        cats.filter(
+            c =>
+                c.month === month.value
+        );
+
+
+    let monthlyTransactions =
         txns.filter(
-            t => t.date.startsWith(month.value)
+            t =>
+                t.date.startsWith(
+                    month.value
+                )
         );
 
 
     let spent = {};
 
 
-    mt.forEach(t =>
+    monthlyTransactions
+        .forEach(
+            t => {
 
-        spent[t.categoryId] =
-            (spent[t.categoryId] || 0)
-            + t.amount
-    );
+                spent[t.categoryId] =
+                    (
+                        spent[t.categoryId]
+                        || 0
+                    )
+                    +
+                    Number(t.amount);
 
-
-    let b =
-        mc.reduce(
-            (s,c) => s + c.budget,
-            0
+            }
         );
 
 
-    let s =
-        mt.reduce(
-            (x,t) => x + t.amount,
-            0
-        );
+    let totalBudget =
+        monthlyCategories
+            .reduce(
+                (sum,c) =>
+                    sum +
+                    Number(c.budget),
+                0
+            );
 
 
-    summary.innerHTML = `
+    let totalSpent =
+        monthlyTransactions
+            .reduce(
+                (sum,t) =>
+                    sum +
+                    Number(t.amount),
+                0
+            );
+
+
+    let remaining =
+        totalBudget
+        -
+        totalSpent;
+
+
+    document
+        .getElementById('summary')
+        .innerHTML = `
 
         <div class="card">
 
@@ -366,7 +836,7 @@ function render() {
             </div>
 
             <h2>
-                ${fmt(b)}
+                ${fmt(totalBudget)}
             </h2>
 
         </div>
@@ -379,7 +849,7 @@ function render() {
             </div>
 
             <h2>
-                ${fmt(s)}
+                ${fmt(totalSpent)}
             </h2>
 
         </div>
@@ -392,7 +862,7 @@ function render() {
             </div>
 
             <h2>
-                ${fmt(b-s)}
+                ${fmt(remaining)}
             </h2>
 
         </div>
@@ -400,210 +870,557 @@ function render() {
     `;
 
 
-    const catsEl =
-        document.getElementById('cats');
+    /* CATEGORY CARDS */
+
+    let catsHTML =
+        monthlyCategories
+            .map(
+                category => {
+
+                    let categorySpent =
+                        spent[
+                            category.id
+                        ]
+                        || 0;
 
 
-    catsEl.innerHTML =
-        mc.map(c => {
-
-            let sp =
-                spent[c.id] || 0;
-
-
-            let p =
-                Math.min(
-                    100,
-                    c.budget
-                        ? sp/c.budget*100
-                        : 0
-                );
+                    let remaining =
+                        Number(
+                            category.budget
+                        )
+                        -
+                        categorySpent;
 
 
-            return `
-
-            <div class="card">
-
-                <button
-                    style="
-                    float:right;
-                    background:#eee;
-                    color:#555"
-                    onclick="delCat('${c.id}')"
-                >
-                    ×
-                </button>
-
-
-                <h3>
-                    ${c.name}
-                </h3>
+                    let percent =
+                        category.budget
+                        ?
+                        Math.min(
+                            100,
+                            categorySpent
+                            /
+                            category.budget
+                            *
+                            100
+                        )
+                        :
+                        0;
 
 
-                <h2>
-                    ${fmt(c.budget-sp)}
-                </h2>
+                    return `
+
+                    <div class="card">
+
+                        <button
+                            class="secondary"
+                            style="float:right;padding:5px 9px"
+                            onclick="deleteCategory('${category.id}')"
+                        >
+                            ×
+                        </button>
 
 
-                <div class="muted">
-
-                    remaining of
-                    ${fmt(c.budget)}
-
-                </div>
+                        <h3>
+                            ${category.name}
+                        </h3>
 
 
-                <div class="bar">
-
-                    <i
-                        style="width:${p}%">
-                    </i>
-
-                </div>
+                        <h2>
+                            ${fmt(remaining)}
+                        </h2>
 
 
-                <div class="muted">
+                        <div class="muted">
 
-                    Spent
-                    ${fmt(sp)}
+                            remaining of
 
-                </div>
+                            ${fmt(
+                                category.budget
+                            )}
 
-            </div>
+                        </div>
 
-            `;
 
-        }).join('')
+                        <div class="bar">
+
+                            <i
+                                style="
+                                width:${percent}%
+                                ">
+                            </i>
+
+                        </div>
+
+
+                        <div class="muted">
+
+                            Spent
+
+                            ${fmt(
+                                categorySpent
+                            )}
+
+                        </div>
+
+                    </div>
+
+                    `;
+
+                }
+            )
+            .join('');
+
+
+    document
+        .getElementById('cats')
+        .innerHTML =
+
+        catsHTML
 
         ||
 
-        `<div class="card muted">
+        `
+        <div class="card muted">
             No categories yet.
-        </div>`;
+        </div>
+        `;
 
 
-    ecat.innerHTML =
-        mc.map(c =>
+    /* EXPENSE CATEGORY SELECT */
 
-            `<option value="${c.id}">
-                ${c.name}
-            </option>`
-
-        ).join('');
-
-
-    document.getElementById('txns')
+    document
+        .getElementById('ecat')
         .innerHTML =
 
-        mt.map(t => {
+        monthlyCategories
+            .map(
+                c =>
 
-            let c =
-                cats.find(
-                    x =>
-                    x.id === t.categoryId
-                );
+                `
+                <option value="${c.id}">
+                    ${c.name}
+                </option>
+                `
+
+            )
+            .join('');
 
 
-            return `
+    /* TRANSACTION HISTORY */
 
-            <div class="txn">
+    document
+        .getElementById('txns')
+        .innerHTML =
 
-                <div>
+        monthlyTransactions
+            .map(
+                transaction => {
 
-                    <b>
+                    let category =
+                        cats.find(
+                            c =>
+                                c.id
+                                ===
+                                transaction.categoryId
+                        );
+
+
+                    return `
+
+                    <div class="txn">
+
+                        <div>
+
+                            <b>
+
+                                ${
+                                    transaction.note
+                                    ||
+                                    category?.name
+                                    ||
+                                    'Expense'
+                                }
+
+                            </b>
+
+
+                            <div class="muted">
+
+                                ${
+                                    category?.name
+                                    ||
+                                    'Deleted category'
+                                }
+
+                                ·
+
+                                ${transaction.date}
+
+                            </div>
+
+                        </div>
+
+
+                        <div>
+
+                            <b>
+                                -${fmt(
+                                    transaction.amount
+                                )}
+                            </b>
+
+
+                            <button
+                                class="secondary"
+                                style="
+                                padding:5px 9px;
+                                margin-left:5px;
+                                "
+                                onclick="deleteTransaction('${transaction.id}')"
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    `;
+
+                }
+            )
+            .join('')
+
+        ||
+
+        `
+        <div class="muted">
+            No transactions yet.
+        </div>
+        `;
+
+
+    renderShopping();
+}
+
+
+/* ==========================
+   RENDER SHOPPING LIST
+========================== */
+
+function renderShopping() {
+
+    let list =
+        shopping.filter(
+            item =>
+                item.month
+                ===
+                month.value
+        );
+
+
+    let totalPlanned =
+        list.reduce(
+            (sum,item) =>
+                sum
+                +
+                Number(
+                    item.price || 0
+                ),
+            0
+        );
+
+
+    let purchasedTotal =
+        list
+            .filter(
+                item =>
+                    item.purchased
+            )
+            .reduce(
+                (sum,item) =>
+                    sum
+                    +
+                    Number(
+                        item.price || 0
+                    ),
+                0
+            );
+
+
+    let remainingPlanned =
+        totalPlanned
+        -
+        purchasedTotal;
+
+
+    document
+        .getElementById(
+            'shoppingSummary'
+        )
+        .innerHTML = `
+
+        Planned:
+        <b>
+            ${fmt(totalPlanned)}
+        </b>
+
+        &nbsp; · &nbsp;
+
+        Purchased:
+        <b>
+            ${fmt(purchasedTotal)}
+        </b>
+
+        &nbsp; · &nbsp;
+
+        Remaining planned:
+        <b>
+            ${fmt(remainingPlanned)}
+        </b>
+
+    `;
+
+
+    document
+        .getElementById(
+            'shoppingList'
+        )
+        .innerHTML =
+
+        list
+            .map(
+                item => `
+
+                <div
+                    class="
+                    shop-item
+                    ${
+                        item.purchased
+                        ?
+                        'done'
+                        :
+                        ''
+                    }
+                    "
+                >
+
+                    <div class="shop-left">
+
+                        <input
+                            type="checkbox"
+
+                            ${
+                                item.purchased
+                                ?
+                                'checked'
+                                :
+                                ''
+                            }
+
+                            onchange="
+                                toggleShoppingItem(
+                                    '${item.id}'
+                                )
+                            "
+                        >
+
+
+                        <div>
+
+                            <div class="shop-name">
+
+                                <b>
+                                    ${item.name}
+                                </b>
+
+                            </div>
+
+
+                            <div class="muted">
+
+                                Expected:
+
+                                ${fmt(
+                                    item.price
+                                )}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="row">
+
+
                         ${
-                            t.note
-                            ||
-                            c?.name
-                            ||
-                            'Expense'
+                            item.price
+                            &&
+                            !item.addedToExpense
+
+                            ?
+
+                            `
+
+                            <button
+                                class="success"
+                                onclick="
+                                    addShoppingToExpense(
+                                        '${item.id}'
+                                    )
+                                "
+                            >
+                                Add to expenses
+                            </button>
+
+                            `
+
+                            :
+
+                            ''
                         }
-                    </b>
 
-
-                    <div class="muted">
 
                         ${
-                            c?.name
-                            ||
-                            'Deleted category'
+                            item.addedToExpense
+
+                            ?
+
+                            `
+
+                            <span class="muted">
+                                Added to expenses ✓
+                            </span>
+
+                            `
+
+                            :
+
+                            ''
                         }
 
-                        ·
 
-                        ${t.date}
+                        ${
+                            !item.addedToExpense
+
+                            ?
+
+                            `
+
+                            <button
+                                class="secondary"
+                                onclick="
+                                    editShoppingItem(
+                                        '${item.id}'
+                                    )
+                                "
+                            >
+                                Edit
+                            </button>
+
+                            `
+
+                            :
+
+                            ''
+                        }
+
+
+                        <button
+                            class="secondary"
+                            onclick="
+                                deleteShoppingItem(
+                                    '${item.id}'
+                                )
+                            "
+                        >
+                            Delete
+                        </button>
+
 
                     </div>
 
                 </div>
 
-
-                <div>
-
-                    <b>
-                        -${fmt(t.amount)}
-                    </b>
-
-
-                    <button
-                        style="
-                        background:#eee;
-                        color:#555;
-                        padding:5px 8px"
-                        onclick="delTxn('${t.id}')"
-                    >
-                        ×
-                    </button>
-
-                </div>
-
-            </div>
-
-            `;
-
-        }).join('')
+                `
+            )
+            .join('')
 
         ||
 
-        `<div class="muted">
-            No transactions yet.
-        </div>`;
+        `
+        <div class="muted">
+            No shopping items yet.
+        </div>
+        `;
 }
 
 
-/* Add default categories
-   when opening app for first time */
+/* ==========================
+   DEFAULT CATEGORIES
+========================== */
 
 if (!cats.length) {
 
     cats = [
 
         {
-            id: crypto.randomUUID(),
-            name: 'Grocery',
-            budget: 10000,
-            month: month.value
+
+            id:
+                crypto.randomUUID(),
+
+            name:
+                'Grocery',
+
+            budget:
+                10000,
+
+            month:
+                month.value
+
         },
 
         {
-            id: crypto.randomUUID(),
-            name: 'Transport',
-            budget: 5000,
-            month: month.value
+
+            id:
+                crypto.randomUUID(),
+
+            name:
+                'Transport',
+
+            budget:
+                5000,
+
+            month:
+                month.value
+
         },
 
         {
-            id: crypto.randomUUID(),
-            name: 'Shopping',
-            budget: 6000,
-            month: month.value
+
+            id:
+                crypto.randomUUID(),
+
+            name:
+                'Shopping',
+
+            budget:
+                6000,
+
+            month:
+                month.value
+
         }
 
     ];
 
+
     save();
 
-} else {
+}
+else {
 
     render();
 
